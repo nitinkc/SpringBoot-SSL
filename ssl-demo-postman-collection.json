@@ -1,0 +1,904 @@
+{
+  "info": {
+    "_postman_id": "ssl-demo-collection",
+    "name": "SSL Certificate Testing Collection",
+    "description": "Comprehensive Postman collection for testing SSL/TLS certificates and secure communication\n\n## How to Use This Collection\n\n### 1. Understanding SSL Testing\nSSL (Secure Sockets Layer) / TLS ensures secure communication between client and server. This collection demonstrates:\n- Secure HTTPS connections\n- Certificate validation\n- Certificate expiry scenarios\n- SSL handshake behavior\n- Error handling for SSL issues\n\n### 2. Prerequisites\n- The SSL Demo application must be running on https://localhost:8443\n- Certificate details:\n  - Keystore: keystore.p12 (PKCS12 format)\n  - Password: changeit\n  - Key Alias: myalias\n  - Default certificate is self-signed for testing\n\n### 3. Important Notes on SSL/TLS Testing\n\n#### Self-Signed Certificates\n- The application uses a self-signed certificate for development/testing\n- Browsers and API clients will show security warnings\n- In Postman: You may need to disable SSL certificate verification for testing\n\n#### Disabling SSL Verification in Postman (for Testing)\n1. Click \"Preferences\" (top-right gear icon)\n2. Go to \"Certificates\" tab\n3. Toggle \"SSL certificate verification\" to OFF\n4. Or in individual request settings: \"Settings\" → \"SSL certificate verification\" → OFF\n\n**WARNING**: Only disable verification in development/testing environments. Never disable in production!\n\n#### Testing Real SSL Scenarios\n\n**Valid Certificate**: \n- The application uses a valid keystore\n- Check certificate details by examining the HTTPS response headers\n\n**Expired Certificate Scenario**:\n- The demo includes documentation on what happens when certificates expire\n- In production: Your monitoring system should alert when certificates expire\n- Typically 30-90 days before expiration\n\n**Certificate Pinning**:\n- For sensitive applications, implement certificate pinning\n- This prevents MITM (Man-in-the-Middle) attacks even if a CA is compromised\n\n### 4. Testing Flow\n\n1. **Start with Basic Connectivity Test** - Verify the server is running\n2. **Test Secure Endpoints** - Access HTTPS endpoints\n3. **Observe Certificate Details** - Look at response headers and certificate info\n4. **Test Error Scenarios** - Understand how SSL errors are handled\n5. **Review Logs** - Check application logs for SSL handshake details\n\n### 5. SSL/TLS Handshake Process\n\nWhen you make a request to an HTTPS endpoint:\n\n```\nClient                                    Server\n  │                                         │\n  ├──────── ClientHello ─────────────────→ │\n  │  (versions, cipher suites, random)     │\n  │                                         │\n  │ ←────── ServerHello ─────────────────── │\n  │  (chosen version, cipher suite, random)│\n  │                                         │\n  │ ←───── Certificate ────────────────────│\n  │  (server's public cert)                 │\n  │                                         │\n  │ ←─ ServerKeyExchange (optional) ──────│\n  │                                         │\n  │ ←─ ServerHelloDone ──────────────────  │\n  │                                         │\n  ├──── ClientKeyExchange ────────────────→│\n  │  (encrypted premaster secret)           │\n  │                                         │\n  ├──── ChangeCipherSpec ─────────────────→│\n  │                                         │\n  ├──── Finished ──────────────────────────→│\n  │  (encrypted handshake hash)             │\n  │                                         │\n  │ ←── ChangeCipherSpec ────────────────── │\n  │                                         │\n  │ ←── Finished ─────────────────────────│\n  │  (encrypted handshake hash)             │\n  │                                         │\n  ├──── Application Data (Encrypted) ────→ │\n  │                                         │\n```\n\n### 6. Common SSL Errors You Might Encounter\n\n- **SSL_ERROR_BAD_CERT_DOMAIN**: Certificate domain doesn't match\n- **SSL_ERROR_EXPIRED_CERT_ALERT**: Certificate is expired\n- **SSL_ERROR_UNKNOWN_CA**: Certificate issuer not in trusted store\n- **SSL_ERROR_HANDSHAKE_FAILURE**: Unable to negotiate SSL/TLS parameters\n- **CERTIFICATE_VERIFY_FAILED**: Certificate verification failed\n\n### 7. Response Inspection\n\nAfter making a request:\n1. Check **Headers** tab for SSL-related headers (e.g., `Strict-Transport-Security`)\n2. Click **Certificate** icon (if available) to view certificate details\n3. Review **Body** for application-level response\n4. Check application logs for detailed SSL handshake information\n\n### 8. Best Practices\n\n- Always use HTTPS in production\n- Renew certificates at least 30-90 days before expiry\n- Implement certificate monitoring and alerts\n- Keep certificates in secure locations with restricted access\n- Use strong key sizes (2048-bit RSA or equivalent)\n- Consider certificate pinning for high-security applications\n- Implement proper error handling for SSL failures\n- Test SSL configuration regularly\n- Use tools like `openssl` to inspect certificate details\n\n### 9. Useful Commands for SSL Certificate Inspection\n\n```bash\n# View certificate details from keystore\nkeytool -list -v -keystore keystore.p12 -storetype PKCS12 -storepass changeit\n\n# Export certificate from keystore\nkeytool -export -keystore keystore.p12 -alias myalias -file certificate.cer -storepass changeit\n\n# View certificate details\nopenssl x509 -in certificate.cer -text -noout\n\n# Test SSL connection\nopenssl s_client -connect localhost:8443\n\n# Generate new self-signed certificate\nkeytool -genkey -alias myalias -keyalg RSA -keysize 2048 -keystore keystore.p12 -storepass changeit -validity 365 -dname \"CN=localhost,OU=Dev,O=Example,L=City,ST=State,C=US\"\n```\n\n### 10. Monitoring Certificate Expiry\n\nThe application includes `SslExceptionHandler` that handles SSL-related exceptions:\n- `SSLHandshakeException`: Occurs during initial SSL negotiation\n- `SSLException`: General SSL protocol errors\n- These are caught and returned with appropriate HTTP status codes\n\nIn production, implement:\n- Certificate expiry monitoring (check validity period)\n- Automatic renewal systems\n- Alerts 30-90 days before expiration\n- Logging and metrics for SSL errors\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Basic Connectivity",
+      "item": [
+        {
+          "name": "Test HTTPS Connection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test that the connection was successful",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is valid\", function () {",
+                  "    pm.response.to.be.ok;",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains expected message\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('message');",
+                  "    pm.expect(body.message.toLowerCase()).to.include('secure');",
+                  "});",
+                  "",
+                  "// Log certificate information",
+                  "console.log('✓ HTTPS connection successful');",
+                  "console.log('Certificate validation passed');",
+                  "console.log('Response time: ' + pm.response.responseTime + 'ms');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Basic test to verify HTTPS connection to the application.\n\n**What this tests:**\n- HTTPS protocol connectivity\n- SSL/TLS handshake completion\n- Server certificate validation (if enabled)\n- Basic endpoint availability\n\n**Expected Result:**\n- Status: 200 OK\n- Response: \"This is a secure endpoint!\"\n\n**If you get SSL errors:**\n1. Ensure the application is running on port 8443\n2. Check if SSL certificate verification is causing issues\n3. In Postman: Disable SSL verification in Preferences → Certificates\n4. Verify the keystore.p12 file exists in src/main/resources"
+          }
+        },
+        {
+          "name": "Check Server Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Server is responding\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "",
+                  "console.log('Server status: ' + pm.response.code);",
+                  "console.log('Response headers:');",
+                  "pm.response.headers.each((header) => {",
+                  "    console.log('  ' + header.key + ': ' + header.value);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Check application health status (if actuator is enabled).\n\n**Note:** This assumes Spring Boot Actuator is enabled. If not available, this will return 404."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Secure Endpoints",
+      "item": [
+        {
+          "name": "GET /api/secure Endpoint",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successfully accessed secure endpoint\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body is correct\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('message');",
+                  "    pm.expect(body.message).to.equal(\"Hello from a SECURE endpoint!\");",
+                  "});",
+                  "",
+                  "// Store response for later use",
+                  "pm.collectionVariables.set(\"last_response\", pm.response.json().message);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Access the primary secure endpoint.\n\n**Endpoint Details:**\n- Path: `/api/secure`\n- Method: GET\n- Port: 8443 (HTTPS)\n- Authentication: None (for testing)\n\n**What happens when you call this:**\n1. Your client initiates an HTTPS connection\n2. TLS handshake occurs:\n   - Client sends supported cipher suites\n   - Server responds with certificate\n   - Both negotiate encryption keys\n3. Request is sent over encrypted channel\n4. Response is encrypted and returned\n\n**Response:**\n- 200 OK with message \"This is a secure endpoint!\""
+          }
+        },
+        {
+          "name": "GET /api/another-secure Endpoint",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Successfully accessed another secure endpoint\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains expected text\", function () {",
+                  "    var body = pm.response.json();",
+                  "    pm.expect(body).to.have.property('message');",
+                  "    pm.expect(body.message.toLowerCase()).to.include(\"another\");",
+                  "});",
+                  "",
+                  "console.log('Endpoint response: ' + pm.response.json().message);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/another-secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "another-secure"
+              ]
+            },
+            "description": "Access another secure endpoint to demonstrate multiple HTTPS routes.\n\n**Endpoint Details:**\n- Path: `/api/another-secure`\n- Method: GET\n- Port: 8443 (HTTPS)\n\n**Response:**\n- 200 OK with message \"This is another secure endpoint!\""
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. SSL Certificate Details",
+      "item": [
+        {
+          "name": "View Certificate Information",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// This is a reference guide for viewing certificate details",
+                  "console.log('To view certificate details in Postman:');",
+                  "console.log('1. Send the HTTPS request');",
+                  "2. Look for the certificate icon in the response section');",
+                  "console.log('3. Click on it to see:');",
+                  "console.log('   - Issued To (Subject)');",
+                  "console.log('   - Issued By (Issuer)');",
+                  "console.log('   - Validity dates (Not Before, Not After)');",
+                  "console.log('   - Public Key');",
+                  "console.log('   - Signature');",
+                  "",
+                  "pm.test(\"HTTPS request successful\", function () {",
+                  "    pm.expect(pm.response.code).to.be.below(500);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "**Guide to Viewing Certificate Details**\n\nWhen you make an HTTPS request in Postman, you can view the server's certificate:\n\n**Steps:**\n1. Send this request\n2. In the response section, look for a **certificate icon** (usually near the Status)\n3. Click on it to see detailed certificate information\n\n**Certificate Information You'll See:**\n\n| Field | Description |\n|-------|-------------|\n| **Subject (Issued To)** | CN=localhost, OU=Dev, O=Example, C=US |\n| **Issuer (Issued By)** | Self-signed (same as subject) |\n| **Validity Period** | Not Before: [Date] / Not After: [Date] |\n| **Public Key** | RSA 2048-bit key used for encryption |\n| **Serial Number** | Unique identifier for this certificate |\n| **Signature Algorithm** | SHA256withRSA (or similar) |\n| **Fingerprint** | SHA-256 hash of the certificate |\n\n**What This Means:**\n- **Self-Signed**: This certificate is signed by itself, not by a trusted CA\n- **Localhost Only**: Certificate is valid only for localhost (CN=localhost)\n- **Expiry Date**: Shows when this certificate becomes invalid\n\n**For Production:**\n- Get certificate from trusted Certificate Authority (Let's Encrypt, DigiCert, etc.)\n- Certificate should match your domain name\n- Implement certificate renewal before expiry\n- Monitor expiry dates and set up alerts\n\n**Testing Different Scenarios:**\n1. **Valid Certificate**: Current request shows valid self-signed cert\n2. **Expired Certificate**: Update cert validity and re-import to see errors\n3. **Wrong Domain**: Try using IP instead of localhost to trigger domain mismatch\n4. **Untrusted CA**: Self-signed certs are inherently untrusted (expected behavior)"
+          }
+        },
+        {
+          "name": "Test with Manual Certificate Command",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Reference test\", function () {",
+                  "    pm.expect(true).to.equal(true);",
+                  "});",
+                  "",
+                  "console.log('Run this command in terminal to inspect the keystore:');",
+                  "console.log('keytool -list -v -keystore keystore.p12 -storetype PKCS12 -storepass changeit');",
+                  "console.log('');",
+                  "console.log('This will show:');",
+                  "console.log('- Certificate Owner (CN, OU, O, etc.)');",
+                  "console.log('- Issue Date and Expiry Date');",
+                  "console.log('- Serial Number');",
+                  "console.log('- Key Algorithm and Size');",
+                  "console.log('- Certificate Fingerprints (SHA-256, MD5)');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "**Inspect Keystore Using keytool**\n\nRun this command in your terminal to see detailed certificate information:\n\n```bash\nkeytool -list -v -keystore src/main/resources/keystore.p12 -storetype PKCS12 -storepass changeit\n```\n\n**You'll see output like:**\n```\nKeystore type: PKCS12\nKeystore provider: SunJSSE\n\nYour keystore contains 1 entry\n\nAlias name: myalias\nCreation date: Jan 15, 2024\nEntry type: PrivateKeyEntry\nCertificate chain length: 1\nCertificate[1]:\nOwner: CN=localhost, OU=Dev, O=Example, L=City, ST=State, C=US\nIssuer: CN=localhost, OU=Dev, O=Example, L=City, ST=State, C=US\nSerial number: 1\nValid from: Mon Jan 15 00:00:00 UTC 2024 until: Tue Jan 16 00:00:00 UTC 2025\nCertificate Fingerprints:\n    SHA1: ...\n    SHA256: ...\n```\n\n**Key Information:**\n- **Owner (CN)**: The domain/hostname this cert is for\n- **Issuer**: Who signed it (self-signed in this case)\n- **Serial Number**: Unique ID\n- **Valid from/until**: Expiry dates\n- **Fingerprints**: Used to verify certificate authenticity"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Error Handling & Edge Cases",
+      "item": [
+        {
+          "name": "Test Invalid Endpoint",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns 404 for invalid endpoint\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "console.log('Testing error handling:');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/nonexistent",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "nonexistent"
+              ]
+            },
+            "description": "Test error handling with invalid endpoint.\n\n**Expected Result:**\n- Status: 404 Not Found\n- The SSL/TLS connection succeeds, but the endpoint doesn't exist\n\n**This demonstrates:**\n- Error handling layer is reached (connection was encrypted)\n- Application properly returns error responses\n- SSL works even for error responses"
+          }
+        },
+        {
+          "name": "Test HTTP vs HTTPS",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// This test is expected to fail or redirect",
+                  "console.log('Testing HTTP on HTTPS-only port:');",
+                  "console.log('Application is configured to ONLY use HTTPS on port 8443');",
+                  "console.log('Attempting HTTP connection should:');",
+                  "console.log('1. Fail to establish connection');",
+                  "console.log('2. Or receive protocol error');",
+                  "console.log('3. Or redirect to HTTPS');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8443/api/secure",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Demonstrates the difference between HTTP and HTTPS.\n\n**What happens:**\n- You send HTTP request to HTTPS port\n- Connection fails because:\n  - Port expects TLS handshake\n  - HTTP protocol doesn't initiate TLS handshake\n  - Protocol mismatch occurs\n\n**Expected Error:**\n- \"Failed to connect\" or similar\n- Network error rather than HTTP error\n\n**Security Lesson:**\n- Application enforces HTTPS-only\n- Prevents accidental HTTP connections\n- Ensures all traffic is encrypted\n\n**In Production:**\n- Always enforce HTTPS\n- Redirect HTTP to HTTPS\n- Use HSTS headers to prevent downgrade attacks"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. SSL Configuration Testing",
+      "item": [
+        {
+          "name": "View Application Configuration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Configuration reference\", function () {",
+                  "    pm.expect(true).to.equal(true);",
+                  "});",
+                  "",
+                  "console.log('Current SSL Configuration (from application.yml):');",
+                  "console.log('');",
+                  "console.log('Server Configuration:');",
+                  "console.log('  Port: 8443');",
+                  "console.log('  SSL Enabled: true');",
+                  "console.log('');",
+                  "console.log('Certificate Configuration:');",
+                  "console.log('  Keystore: src/main/resources/keystore.p12');",
+                  "console.log('  Keystore Type: PKCS12');",
+                  "console.log('  Keystore Password: changeit');",
+                  "console.log('  Key Alias: myalias');",
+                  "console.log('');",
+                  "console.log('What These Mean:');",
+                  "console.log('  - Keystore: File containing private key and certificate');",
+                  "console.log('  - PKCS12: Modern keystore format (Java default is JKS)');",
+                  "console.log('  - Password: Protects access to the keystore');",
+                  "console.log('  - Key Alias: Name of the specific key in the keystore');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Reference guide for SSL configuration used in the application.\n\n**From application.yml:**\n\n```yaml\nserver:\n  port: 8443\n  ssl:\n    enabled: true\n    key-store: classpath:keystore.p12\n    key-store-password: changeit\n    key-store-type: PKCS12\n    key-alias: myalias\n```\n\n**Configuration Explanation:**\n\n| Setting | Value | Purpose |\n|---------|-------|----------|\n| **port** | 8443 | Standard HTTPS port (443 is for production) |\n| **ssl.enabled** | true | Enable SSL/TLS |\n| **key-store** | keystore.p12 | Path to keystore file containing certificate |\n| **key-store-password** | changeit | Password to access keystore (change in production!) |\n| **key-store-type** | PKCS12 | Keystore format (modern standard) |\n| **key-alias** | myalias | Name of the certificate entry in keystore |\n\n**For Production Changes:**\n1. Use port 443 (requires elevated privileges)\n2. Use certificate from trusted CA\n3. Change the keystore password to something secure\n4. Store password securely (not in code/version control)\n5. Rotate certificates regularly\n6. Monitor certificate expiry\n7. Implement certificate pinning for sensitive apps"
+          }
+        },
+        {
+          "name": "View Exception Handler Configuration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Exception handler reference\", function () {",
+                  "    pm.expect(true).to.equal(true);",
+                  "});",
+                  "",
+                  "console.log('SSL Exception Handler Details:');",
+                  "console.log('');",
+                  "console.log('@ControllerAdvice');",
+                  "console.log('public class SslExceptionHandler {');",
+                  "console.log('');",
+                  "console.log('  1. SSLHandshakeException');",
+                  "console.log('     Status: 502 Bad Gateway');",
+                  "console.log('     Message: SSL Handshake failed');",
+                  "console.log('     Cause: TLS negotiation failed');",
+                  "console.log('');",
+                  "console.log('  2. SSLException');",
+                  "console.log('     Status: 500 Internal Server Error');",
+                  "console.log('     Message: SSL error occurred');",
+                  "console.log('     Cause: Other SSL protocol errors');",
+                  "console.log('');",
+                  "console.log('  3. Generic Exception');",
+                  "console.log('     Status: 500 Internal Server Error');",
+                  "console.log('     Message: An error occurred');",
+                  "console.log('}');",
+                  "console.log('');",
+                  "console.log('How It Works:');",
+                  "console.log('1. Client initiates HTTPS connection');",
+                  "2. If TLS handshake fails → SSLHandshakeException → 502');",
+                  "console.log('3. If SSL protocol error → SSLException → 500');",
+                  "console.log('4. Other errors caught by generic handler → 500');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Reference for how SSL exceptions are handled in the application.\n\n**SslExceptionHandler Class:**\n\nThe application includes a `@ControllerAdvice` exception handler that catches SSL-related exceptions:\n\n```java\n@ControllerAdvice\npublic class SslExceptionHandler {\n    \n    @ExceptionHandler(javax.net.ssl.SSLHandshakeException.class)\n    public ResponseEntity<String> handleSslHandshakeException(...) {\n        // Returns 502 Bad Gateway\n    }\n    \n    @ExceptionHandler(javax.net.ssl.SSLException.class)\n    public ResponseEntity<String> handleSslException(...) {\n        // Returns 500 Internal Server Error\n    }\n    \n    @ExceptionHandler(Exception.class)\n    public ResponseEntity<String> handleGenericException(...) {\n        // Returns 500 Internal Server Error\n    }\n}\n```\n\n**Exception Types:**\n\n1. **SSLHandshakeException**\n   - Thrown when TLS handshake fails\n   - Common causes:\n     - Unsupported cipher suites\n     - Certificate validation failure\n     - Protocol version mismatch\n   - HTTP Status: 502 Bad Gateway\n\n2. **SSLException**\n   - Generic SSL protocol errors\n   - Could be any SSL layer issue after handshake\n   - HTTP Status: 500 Internal Server Error\n\n3. **Generic Exception**\n   - Fallback for other exceptions\n   - HTTP Status: 500 Internal Server Error\n\n**When You Might See These Errors:**\n- Expired certificate\n- Self-signed certificate (in strict environments)\n- Certificate domain mismatch\n- Firewall/network blocking SSL\n- Weak cipher suites\n- Java security policies blocking certain algorithms"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Monitoring & Logs",
+      "item": [
+        {
+          "name": "Make Request and Check Application Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Request successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('After making this request:');",
+                  "console.log('1. Check your application logs');",
+                  "console.log('2. You should see entries like:');",
+                  "console.log('');",
+                  "console.log('[TLS Handshake Complete] Cipher Suite: TLS_AES_256_GCM_SHA384');",
+                  "console.log('[DEBUG] Incoming request: GET /api/secure');",
+                  "console.log('[DEBUG] Response: This is a secure endpoint!');",
+                  "console.log('');",
+                  "console.log('Key information to look for:');",
+                  "console.log('- TLS version (TLSv1.2, TLSv1.3, etc.)');",
+                  "console.log('- Cipher suite used');",
+                  "console.log('- Request/Response details');",
+                  "console.log('- Any SSL-related warnings or errors');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Make a request and examine application logs to understand SSL/TLS behavior.\n\n**Steps:**\n1. Send this request\n2. Open your application logs (console or log file)\n3. Look for SSL-related log entries\n\n**Expected Log Output:**\n```\n[Tomcat] [TLS Handshake] Protocol: TLSv1.3\n[Tomcat] [TLS Handshake] Cipher Suite: TLS_AES_256_GCM_SHA384\n[Spring] Starting request processing\n[Example] Accessing /api/secure endpoint\n[Spring] Request completed: 200 OK\n```\n\n**What's Happening:**\n1. **Connection Establishment**: TLS handshake occurs\n2. **Encryption Negotiation**: Cipher suite is selected\n3. **Request Processing**: Request is processed by Spring\n4. **Response**: Response is encrypted and sent back\n5. **Connection Closure**: Connection may be kept-alive for next request\n\n**Configuration for Logs:**\nThe application.yml sets logging levels:\n```yaml\nlogging:\n  level:\n    org.springframework: INFO\n    com.example.ssldemo: DEBUG\n```\n\n**Enable More Verbose SSL Logging:**\nAdd to application.yml:\n```yaml\nlogging:\n  level:\n    org.apache.tomcat: DEBUG\n    org.apache.coyote: DEBUG\n```\n\n**For Java SSL Debugging:**\nStart application with:\n```bash\n-Djavax.net.debug=ssl:handshake:verbose\n```"
+          }
+        },
+        {
+          "name": "Performance Testing - Response Time",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Analyze response time",
+                  "const responseTime = pm.response.responseTime;",
+                  "",
+                  "pm.test(\"Response time is acceptable\", function () {",
+                  "    pm.expect(responseTime).to.be.below(1000);",
+                  "});",
+                  "",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('=== SSL/TLS Performance Analysis ===');",
+                  "console.log('Response Time: ' + responseTime + 'ms');",
+                  "console.log('');",
+                  "console.log('Response time includes:');",
+                  "console.log('1. DNS Resolution (if not cached)');",
+                  "console.log('2. TCP Connection Establishment');",
+                  "console.log('3. TLS Handshake (most expensive)');",
+                  "console.log('4. HTTP Request Send');",
+                  "console.log('5. Server Processing');",
+                  "console.log('6. HTTP Response Receive');",
+                  "console.log('');",
+                  "console.log('TLS Handshake Breakdown (typical):');",
+                  "console.log('- ClientHello: ~1ms');",
+                  "console.log('- ServerHello + Certificate: ~5-10ms');",
+                  "console.log('- Key Exchange: ~10-20ms');",
+                  "console.log('- Total TLS: ~20-50ms');",
+                  "console.log('');",
+                  "if (responseTime > 100) {",
+                  "    console.log('⚠️  High response time - consider TLS session caching');",
+                  "} else {",
+                  "    console.log('✓ Response time is good');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Analyze SSL/TLS handshake performance.\n\n**Performance Considerations:**\n\n**TLS Handshake Overhead:**\n- First connection: 20-50ms for handshake\n- Each full handshake involves:\n  - Key exchange: ~10ms\n  - Certificate verification: ~5-10ms\n  - Encryption setup: ~5ms\n\n**Optimization Techniques:**\n\n1. **TLS Session Resumption**\n   - Reuse session keys from previous connections\n   - Reduces handshake time to 5-10ms\n   - Enabled by default in modern browsers\n\n2. **Connection Keep-Alive**\n   - Keep TCP connections open\n   - Reuse for multiple requests\n   - Reduces overhead for subsequent requests\n\n3. **TLS 1.3**\n   - Faster handshake (0-RTT in resumption)\n   - Modern cipher suites\n   - Recommended over TLS 1.2\n\n4. **Certificate Caching**\n   - Clients cache certificates\n   - Reduces handshake time\n\n**Monitoring Response Times:**\n- Track average response time\n- Monitor for TLS handshake delays\n- Alert if response time > 500ms\n- Profile production traffic\n\n**First Request vs Subsequent Requests:**\n- First request includes full handshake\n- Subsequent requests on same connection are faster\n- Connection keep-alive essential for performance"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Troubleshooting Guide",
+      "item": [
+        {
+          "name": "Troubleshooting: Certificate Issues",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Certificate Troubleshooting Guide ===');",
+                  "console.log('');",
+                  "console.log('PROBLEM: \"Certificate Verification Failed\"');",
+                  "console.log('Solutions:');",
+                  "console.log('1. Verify certificate is valid:');",
+                  "console.log('   keytool -list -v -keystore keystore.p12 -storepass changeit');",
+                  "console.log('2. Check expiry date hasn\\'t passed');",
+                  "console.log('3. Ensure CN (Common Name) matches hostname');",
+                  "console.log('4. For testing: Disable SSL verification in Postman');",
+                  "console.log('');",
+                  "console.log('PROBLEM: \"Hostname Mismatch\"');",
+                  "console.log('Solutions:');",
+                  "console.log('1. Ensure you\\'re using correct hostname (localhost vs 127.0.0.1)');",
+                  "console.log('2. Certificate must have CN=localhost');",
+                  "console.log('3. Add SAN (Subject Alt Name) if needed');",
+                  "console.log('');",
+                  "console.log('PROBLEM: \"Connection Refused\"');",
+                  "console.log('Solutions:');",
+                  "console.log('1. Application not running? Start it with: mvn spring-boot:run');",
+                  "console.log('2. Wrong port? Should be 8443');",
+                  "console.log('3. Firewall blocking? Check firewall rules');",
+                  "console.log('');",
+                  "console.log('PROBLEM: \"SSL Handshake Failed\"');",
+                  "console.log('Solutions:');",
+                  "console.log('1. Incompatible TLS versions');",
+                  "console.log('2. Unsupported cipher suites');",
+                  "console.log('3. Check Java SSL configuration');",
+                  "console.log('4. Try: -Djavax.net.debug=ssl:handshake');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Common SSL certificate troubleshooting scenarios and solutions.\n\n**Certificate Issue Checklist:**\n\n```\n❌ \"Certificate is not trusted\"\n✓ Solution: Self-signed certificates are expected in dev/test\n✓ Solution: Disable SSL verification or add to trusted store\n✓ Solution: In production, use CA-signed certificate\n\n❌ \"Certificate has expired\"\n✓ Solution: Generate new certificate or update expiry\n✓ Solution: Monitor cert expiry dates regularly\n✓ Solution: Set up renewal 30-90 days before expiry\n\n❌ \"CN does not match hostname\"\n✓ Solution: Certificate CN must match hostname you're connecting to\n✓ Solution: For localhost, CN should be \"localhost\"\n✓ Solution: For IP, use SAN (Subject Alternative Name)\n\n❌ \"Failed to establish SSL connection\"\n✓ Solution: Check if application is running\n✓ Solution: Verify port is correct (8443)\n✓ Solution: Check firewall allows connection\n✓ Solution: Verify keystore.p12 exists and is readable\n```\n\n**Diagnostic Commands:**\n\n```bash\n# List certificate details\nkeytool -list -v -keystore keystore.p12 -storepass changeit\n\n# Extract certificate from keystore\nkeytool -export -keystore keystore.p12 -alias myalias -file cert.der -storepass changeit\n\n# View certificate details\nopenssl x509 -inform DER -in cert.der -text -noout\n\n# Test connection and see certificate\nopenssl s_client -connect localhost:8443 -showcerts\n\n# Generate new self-signed certificate\nkeytool -genkeypair -alias myalias -keyalg RSA -keysize 2048 \\\n  -keystore keystore.p12 -storepass changeit -validity 365 \\\n  -dname \"CN=localhost,OU=Dev,O=Example,C=US\"\n```"
+          }
+        },
+        {
+          "name": "Troubleshooting: Connection Issues",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== Connection Troubleshooting Guide ===');",
+                  "console.log('');",
+                  "console.log('Issue: Cannot connect to server');",
+                  "console.log('');",
+                  "console.log('Step 1: Verify application is running');",
+                  "console.log('Command: ps aux | grep java');",
+                  "console.log('or check http://localhost:8080/actuator (if on HTTP)');",
+                  "console.log('');",
+                  "console.log('Step 2: Check if port is listening');",
+                  "console.log('Command: lsof -i :8443');",
+                  "console.log('Expected: java process listening on 8443');",
+                  "console.log('');",
+                  "console.log('Step 3: Test raw TCP connection');",
+                  "console.log('Command: telnet localhost 8443');",
+                  "console.log('or: nc -zv localhost 8443');",
+                  "console.log('');",
+                  "console.log('Step 4: Test SSL connection');",
+                  "console.log('Command: openssl s_client -connect localhost:8443');",
+                  "console.log('');",
+                  "console.log('Step 5: Check firewall');",
+                  "console.log('macOS: Check System Preferences > Security & Privacy > Firewall');",
+                  "console.log('Linux: sudo ufw status');",
+                  "console.log('Windows: Check Windows Defender Firewall');",
+                  "console.log('');",
+                  "console.log('Step 6: Review application logs');",
+                  "console.log('Check console output for error messages');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Troubleshooting connection issues between client and server.\n\n**Connection Testing Steps:**\n\n1. **Is the server running?**\n   ```bash\n   ps aux | grep ssl-demo\n   # or\n   lsof -i :8443\n   ```\n   If not running, start with:\n   ```bash\n   mvn spring-boot:run\n   # or\n   java -jar target/ssl-demo-*.jar\n   ```\n\n2. **Can you reach the server?**\n   ```bash\n   telnet localhost 8443\n   # or\n   nc -zv localhost 8443\n   ```\n   Should show: \"Connection successful\" or similar\n\n3. **Can you complete TLS handshake?**\n   ```bash\n   openssl s_client -connect localhost:8443\n   ```\n   Should show certificate details and \"Verify return code: ...\"\n\n4. **Postman specific issues:**\n   - Check that SSL verification is set correctly (disable for self-signed)\n   - Check proxy settings aren't interfering\n   - Try sending request from different machine (if not localhost)\n   - Check request method is GET, not POST\n\n5. **Check application logs:**\n   - Look for SSL/TLS errors\n   - Check if request reached the application\n   - Look for exception stack traces\n\n6. **Network issues:**\n   - Firewall blocking 8443?\n   - VPN interfering?\n   - Corporate proxy intercepting?\n   - Try different network (if possible)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Production Best Practices",
+      "item": [
+        {
+          "name": "Production Checklist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "console.log('=== SSL/TLS Production Readiness Checklist ===');",
+                  "console.log('');",
+                  "console.log('📋 Certificate');",
+                  "console.log('☐ Use certificate from trusted CA (not self-signed)');",
+                  "console.log('☐ Certificate domain matches production domain');",
+                  "console.log('☐ Certificate has sufficient validity period (1-2 years)');",
+                  "console.log('☐ Certificate includes SAN for all domains/subdomains');",
+                  "console.log('☐ Private key is protected and backed up');",
+                  "console.log('');",
+                  "console.log('🔐 Security');",
+                  "console.log('☐ Use TLS 1.2 or 1.3 (disable SSL 3.0, TLS 1.0, 1.1)');",
+                  "console.log('☐ Use strong cipher suites (no weak ciphers)');",
+                  "console.log('☐ Implement HSTS headers');",
+                  "console.log('☐ Consider certificate pinning for mobile apps');",
+                  "console.log('☐ Implement CAA DNS records');",
+                  "console.log('');",
+                  "console.log('🔄 Management');",
+                  "console.log('☐ Set up certificate renewal 30-90 days before expiry');",
+                  "console.log('☐ Automate certificate renewal (Let\\'s Encrypt, etc.)');",
+                  "console.log('☐ Monitor certificate expiry dates');",
+                  "console.log('☐ Test certificate renewal process regularly');",
+                  "console.log('☐ Keep private key secure (HSM, secrets manager)');",
+                  "console.log('');",
+                  "console.log('📊 Monitoring');",
+                  "console.log('☐ Monitor SSL/TLS handshake success rate');",
+                  "console.log('☐ Track handshake duration/latency');",
+                  "console.log('☐ Alert on SSL errors and failures');",
+                  "console.log('☐ Monitor certificate expiry');",
+                  "console.log('☐ Log SSL errors for audit trails');",
+                  "console.log('');",
+                  "console.log('🧪 Testing');",
+                  "console.log('☐ Test with SSL lab (ssllabs.com)');",
+                  "console.log('☐ Verify TLS version compatibility');",
+                  "console.log('☐ Test certificate renewal process');",
+                  "console.log('☐ Load test SSL handshake performance');",
+                  "console.log('☐ Test failover/backup certificates');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/secure",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "secure"
+              ]
+            },
+            "description": "Production readiness checklist for SSL/TLS implementation.\n\n**Before Going to Production:**\n\n**Certificate Management**\n- [ ] Obtain certificate from trusted CA (DigiCert, Let's Encrypt, etc.)\n- [ ] Certificate CN matches production domain exactly\n- [ ] Include all domain variants in SAN (Subject Alternative Name)\n- [ ] Key size minimum 2048-bit RSA (4096 recommended)\n- [ ] Validity period appropriate for your update cycle\n- [ ] Private key stored securely\n- [ ] Multiple copies backed up securely\n\n**TLS Configuration**\n- [ ] Enable TLS 1.3 (preferred)\n- [ ] Support TLS 1.2 as minimum\n- [ ] Disable TLS 1.0, 1.1, SSL 3.0\n- [ ] Use only strong cipher suites\n- [ ] Disable weak algorithms\n- [ ] Configure certificate chain properly\n- [ ] Set appropriate timeouts\n\n**Performance Optimization**\n- [ ] Enable TLS session caching\n- [ ] Use session tickets for resumption\n- [ ] Implement connection keep-alive\n- [ ] Monitor TLS handshake times\n- [ ] Load balance SSL termination\n- [ ] Consider SSL offloading to hardware\n\n**Security Headers**\n- [ ] Strict-Transport-Security (HSTS)\n- [ ] Public-Key-Pins (HPKP) - if pinning\n- [ ] X-Content-Type-Options\n- [ ] X-Frame-Options\n- [ ] Content-Security-Policy\n\n**Monitoring & Alerting**\n- [ ] Monitor certificate expiry (30/60/90 days before)\n- [ ] Alert on SSL errors\n- [ ] Track handshake failures\n- [ ] Monitor certificate validity\n- [ ] Log all SSL exceptions\n- [ ] Metrics for TLS version usage\n- [ ] Metrics for cipher suite usage\n\n**Compliance & Auditing**\n- [ ] Comply with security standards (PCI DSS, HIPAA, etc.)\n- [ ] Audit certificate usage\n- [ ] Document certificate lifecycle\n- [ ] Maintain certificate inventory\n- [ ] Regular security assessments\n- [ ] Penetration testing of SSL/TLS\n\n**Testing Before Production**\n- [ ] SSL Labs grade A or better\n- [ ] Test with various clients\n- [ ] Test certificate renewal\n- [ ] Test failover\n- [ ] Performance load testing\n- [ ] Security scanning\n\n**Recommended Configuration:**\n```yaml\nserver:\n  port: 443\n  ssl:\n    enabled: true\n    key-store: /etc/ssl/certs/keystore.p12\n    key-store-password: ${SSL_KEYSTORE_PASSWORD}\n    key-store-type: PKCS12\n    key-alias: ${SSL_KEY_ALIAS}\n    protocol: TLSv1.3\n    enabled-protocols: TLSv1.3,TLSv1.2\n    ciphers: \"TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1305_SHA256,ECDHE-ECDSA-AES256-GCM-SHA384\"\n```"
+          }
+        }
+      ]
+    }
+      ,
+    {
+      "name": "9. SSL Reference Endpoints",
+      "item": [
+        {
+          "name": "GET /api/ssl/info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ssl/info",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "ssl",
+                "info"
+              ]
+            },
+            "description": "Returns TLS negotiation details for your connection"
+          }
+        },
+        {
+          "name": "GET /api/ssl/certificate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ssl/certificate",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "ssl",
+                "certificate"
+              ]
+            },
+            "description": "Returns client certificate details if mutual TLS is used; otherwise a hint about one-way TLS"
+          }
+        },
+        {
+          "name": "GET /api/ssl/handshake-steps",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ssl/handshake-steps",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "ssl",
+                "handshake-steps"
+              ]
+            },
+            "description": "Educational endpoint that lists the TLS handshake steps (used by docs/tests)"
+          }
+        },
+        {
+          "name": "GET /api/ssl/common-errors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ssl/common-errors",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "ssl",
+                "common-errors"
+              ]
+            },
+            "description": "Returns a short list of common SSL/TLS errors and suggested fixes"
+          }
+        },
+        {
+          "name": "GET /api/ssl/certificate-anatomy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ssl/certificate-anatomy",
+              "protocol": "https",
+              "host": [
+                "localhost"
+              ],
+              "port": "8443",
+              "path": [
+                "api",
+                "ssl",
+                "certificate-anatomy"
+              ]
+            },
+            "description": "Educational endpoint that describes certificate fields (subject, issuer, SAN, etc.)"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://localhost:8443",
+      "type": "string"
+    },
+    {
+      "key": "last_response",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
+
